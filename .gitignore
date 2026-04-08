@@ -1,0 +1,7 @@
+config.yaml
+.processed_ocids.json
+__pycache__/
+*.pyc
+.env
+logs/
+.venv/
