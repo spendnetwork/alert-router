@@ -24,7 +24,11 @@ def get_token(username: str, password: str, api_url: str = "https://api.spendnet
     Raises:
         SystemExit with clear message on failure.
     """
-    login_endpoint = f"{api_url}/api/v3/login/access-token"
+    # Normalize: strip trailing /api/v3 if included so paths don't double up
+    base = api_url.rstrip("/")
+    if base.endswith("/api/v3"):
+        base = base[:-7]
+    login_endpoint = f"{base}/api/v3/login/access-token"
 
     try:
         response = requests.post(

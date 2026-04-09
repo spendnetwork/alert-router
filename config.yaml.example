@@ -39,6 +39,16 @@ search:
     - planning
     - tenderUpdate
 
+  # Search term to filter by (searches title, description, and content)
+  # Use this to narrow results to a specific domain
+  # Examples: "cyber security", "construction", "medical devices"
+  # Leave blank or remove to fetch all matching records
+  search_term: "cyber security"
+
+  # Exclude records containing this term
+  # Useful for removing false positives
+  # exclude_term: "cleaning"
+
   # How many days back to query (1 = today only, 2 = today + yesterday)
   lookback_days: 2
 

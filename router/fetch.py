@@ -30,12 +30,18 @@ def fetch_records(token: str, config: dict) -> list[dict]:
     """
     search = config.get("search", {})
     api_url = config.get("spend_network", {}).get("api_url", "https://api.spendnetwork.cloud")
-    search_endpoint = f"{api_url}/api/v3/notices_summary/read_summary_records"
+    # Normalize: strip trailing /api/v3 if included so paths don't double up
+    base = api_url.rstrip("/")
+    if base.endswith("/api/v3"):
+        base = base[:-7]
+    search_endpoint = f"{base}/api/v3/notices_summary/read_summary_records"
     lookback_days = search.get("lookback_days", 2)
     limit = min(search.get("limit", 100), MAX_RECORDS_PER_PAGE)
     countries = search.get("countries", ["GB"])
     contract_types = search.get("contract_types", ["tender"])
     min_value = search.get("min_value_gbp", 0)
+    search_term = search.get("search_term", None)
+    exclude_term = search.get("exclude_term", None)
 
     # Calculate the lookback date
     since = datetime.now(timezone.utc) - timedelta(days=lookback_days)
@@ -66,6 +72,12 @@ def fetch_records(token: str, config: dict) -> list[dict]:
         # Only include value filter if > 0
         if min_value > 0:
             body["value__gte"] = min_value
+
+        # Include search terms if configured
+        if search_term:
+            body["search_term__is"] = search_term
+        if exclude_term:
+            body["search_term__exclude"] = exclude_term
 
         page_num = (offset // limit) + 1
 
