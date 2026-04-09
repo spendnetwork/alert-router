@@ -16,7 +16,7 @@ def _format_value(value: int) -> str:
     return f"\u00a3{value:,.0f}"
 
 
-def _format_date(date_str: str | None) -> str:
+def _format_date(date_str) -> str:
     """Format an ISO date for display. Returns 'Not specified' if None."""
     if not date_str:
         return "Not specified"

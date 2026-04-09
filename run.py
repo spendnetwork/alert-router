@@ -90,7 +90,7 @@ def load_config(config_path: str) -> dict:
 @click.option("--dry-run", is_flag=True, help="Classify but do not post to webhooks")
 @click.option("--limit", type=int, default=None, help="Override config limit for testing")
 @click.option("--lookback", type=int, default=None, help="Override config lookback_days")
-def main(config_path: str, dry_run: bool, limit, lookback: int | None):
+def main(config_path: str, dry_run: bool, limit, lookback):
     """Open Opportunities Alert Router - fetch, classify, and route procurement opportunities."""
 
     start_time = time.time()
@@ -100,7 +100,7 @@ def main(config_path: str, dry_run: bool, limit, lookback: int | None):
 
     # Apply CLI overrides
     if limit is not None:
-        config["search"]["limit"] = limit
+        config["search"]["max_records"] = limit
     if lookback is not None:
         config["search"]["lookback_days"] = lookback
 

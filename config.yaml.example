@@ -40,10 +40,18 @@ search:
     - tenderUpdate
 
   # Search term to filter by (searches title, description, and content)
+  # Supports boolean OR syntax: "term1" OR "term2" OR "term3"
   # Use this to narrow results to a specific domain
-  # Examples: "cyber security", "construction", "medical devices"
   # Leave blank or remove to fetch all matching records
-  search_term: "cyber security"
+  search_term: >
+    "cyber security" OR "penetration testing" OR "SIEM" OR "SOC"
+    OR "endpoint protection" OR "information security" OR "security operations"
+    OR "threat intelligence" OR "vulnerability assessment" OR "network security"
+    OR "security architecture" OR "red team" OR "blue team" OR "incident response"
+    OR "security clearance" OR "security audit" OR "security monitoring"
+    OR "intrusion detection" OR "malware" OR "ransomware" OR "DDoS"
+    OR "access control" OR "identity management" OR "zero trust"
+    OR "security operations centre" OR "managed security"
 
   # Exclude records containing this term
   # Useful for removing false positives
