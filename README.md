@@ -13,7 +13,7 @@ Each alert includes a relevance score (1-10), a plain-English summary, and direc
 ## Install
 
 ```bash
-git clone https://github.com/openopps/alert-router
+git clone https://github.com/spendnetwork/alert-router
 cd alert-router
 pip install -r requirements.txt
 ```
