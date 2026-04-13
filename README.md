@@ -2,9 +2,11 @@
 
 Fetch today's government procurement opportunities, classify them with an LLM against your plain-English rules, and post matches to Microsoft Teams or Slack.
 
+Each alert includes a relevance score (1-10), a plain-English summary, and direct links to both the original notice and Open Opportunities.
+
 ## What you need
 
-- **Open Opportunities API credentials** - [Expert tier](https://openopps.com/expert)
+- **Open Opportunities API credentials** - [Expert tier](https://openopps.com/api)
 - **Google Gemini API key** - [Get one at aistudio.google.com](https://aistudio.google.com/apikey)
 - **A Microsoft Teams or Slack webhook URL** (see setup instructions below)
 
@@ -28,6 +30,7 @@ Open `config.yaml` and fill in:
 2. Your Gemini API key
 3. Your webhook URLs
 4. Your routing rules (plain English descriptions of what each channel should receive)
+5. Optionally, a relevance gate to filter out false positives
 
 ## Run
 
@@ -42,14 +45,14 @@ python run.py --config /path/to/config.yaml  # custom config path
 ### Example dry-run output
 
 ```
-[DRY RUN] Would post to: cyber-consulting (Teams)
-  Title:   Cyber security operations centre managed service
-  Buyer:   Home Office
-  Value:   £2,400,000
-  Rule:    cyber-consulting
-  Summary: The Home Office is seeking a managed SOC provider for 24/7
-           monitoring, incident response, and threat intelligence across
-           its digital estate. Contract valued at £2.4M over 3 years.
+[DRY RUN] Would post to: bd-south (teams)
+  Title:     Cyber Security Services 3 (DPS) Stage 1 Capability Assessment
+  Buyer:     METROPOLITAN POLICE SERVICE
+  Value:     Not published
+  Rule:      bd-south
+  Relevance: 9/10
+  Summary:   The Metropolitan Police Service is conducting a capability
+             assessment for their Cyber Security Services 3 DPS...
 ```
 
 ### Run summary
@@ -58,12 +61,12 @@ Every run prints a summary:
 
 ```
 --- Run complete ---
-Records fetched:    247
+Records fetched:    42
 Already processed:  12
-Classified:         235
-Matched:            18
-Posted:             18
-Unmatched:          217
+Classified:         30
+Matched:            8
+Posted:             8
+Unmatched:          22
 Errors:             0
 Duration:           43s
 ```
@@ -84,12 +87,16 @@ Create the logs directory first: `mkdir -p logs`
 
 ## How to get a Teams webhook URL
 
+Microsoft Teams now uses **Power Automate Workflows** for webhooks:
+
 1. In Microsoft Teams, go to the channel where you want alerts
 2. Click the **...** menu next to the channel name
-3. Select **Connectors** (or **Workflows** in newer Teams)
-4. Search for **Incoming Webhook**
-5. Click **Configure**, give it a name like "Procurement Alerts"
-6. Copy the webhook URL - paste it into your `config.yaml`
+3. Click **Manage channel** or **Workflows**
+4. Choose **"Post to a channel when a webhook request is received"**
+5. Follow the setup — it gives you a URL
+6. Copy the webhook URL — paste it into your `config.yaml`
+
+The router automatically detects Power Automate Workflows URLs and formats the payload accordingly.
 
 ## How to get a Slack webhook URL
 
@@ -99,13 +106,47 @@ Create the logs directory first: `mkdir -p logs`
 4. Go to **Incoming Webhooks** > toggle it **On**
 5. Click **Add New Webhook to Workspace**
 6. Select the channel for alerts
-7. Copy the webhook URL - paste it into your `config.yaml`
+7. Copy the webhook URL — paste it into your `config.yaml`
+
+## Relevance gate
+
+The relevance gate is an optional first-pass filter that runs before any routing rules. If a record fails the gate, it scores 0 and isn't routed anywhere — regardless of the routing rules.
+
+This is useful when your search keywords are broad and pull in false positives. For example, searching for "security" will match both cyber security and physical security (guards, CCTV, patrols). The gate lets the LLM filter out the false positives before routing.
+
+```yaml
+relevance_gate: >
+  This opportunity must be genuinely related to CYBER SECURITY.
+  Physical security (guards, CCTV, patrols, keyholding) should FAIL.
+```
+
+Remove or leave blank to disable the gate.
+
+## Relevance scoring
+
+Every classified record gets a relevance score from 1-10:
+
+| Score | Meaning |
+|-------|---------|
+| 9-10 | Excellent match — directly on topic |
+| 7-8 | Good match — clearly relevant |
+| 4-6 | Partial match — some relevance |
+| 1-3 | Marginal — keyword appeared but weak fit |
+| 0 | Failed the relevance gate |
+
+The score appears on every Teams and Slack card with colour coding (green/amber/red).
+
+## Multi-destination routing
+
+A single record can match multiple routing rules and will be posted to all matched destinations. For example, an NHS cyber security tender in Manchester would match:
+
+- `bd-north` (buyer in North of England)
+- `consulting` (professional services)
+- `health-opps` (NHS buyer)
 
 ## Writing effective routing rules
 
-The quality of your routing rules determines the quality of your matches. Here are examples of good rules:
-
-### Match by subject matter (specific)
+### Match by subject matter
 ```yaml
 - description: >
     All cyber security consulting, penetration testing, SOC services,
@@ -113,22 +154,22 @@ The quality of your routing rules determines the quality of your matches. Here a
   destination: cyber-team
 ```
 
-### Match by buyer geography (include all relevant names)
+### Match by buyer geography
 ```yaml
 - description: >
-    Any buying organisation that is a local authority, council, or combined
-    authority in the South East of England including London, Kent, Surrey,
-    Essex, Sussex, and Hampshire
-  destination: south-east-bd
+    The buying organisation is located in London, South East England,
+    South West England, or East of England.
+    Also includes UK-wide central government departments based in London.
+  destination: bd-south
 ```
 
-### Match by buyer type (name specific organisations)
+### Match by buyer organisation type
 ```yaml
 - description: >
-    Any opportunity from a central government department, ministry, agency,
-    or executive non-departmental public body, including the Home Office,
-    NHS England, HMRC, MoD, and similar
-  destination: central-gov
+    The BUYER ORGANISATION NAME is a health sector body.
+    Match ONLY if the buyer name contains NHS, Health, ICB, UKHSA, etc.
+    DO NOT match based on the subject — only the buyer name matters.
+  destination: health-opps
 ```
 
 ### Match by value threshold
@@ -139,20 +180,10 @@ The quality of your routing rules determines the quality of your matches. Here a
   destination: large-it-deals
 ```
 
-### Match by sector and geography combined
-```yaml
-- description: >
-    Healthcare equipment, medical devices, or pharmaceutical procurement
-    from NHS trusts, clinical commissioning groups, or integrated care
-    boards in the North West of England
-  destination: nw-health
-```
-
 **Tips:**
-- Be specific - include synonyms, alternative names, and examples
-- Use plain English geography (not just ISO codes)
-- Name specific organisations when matching by buyer type
-- Include related terms (e.g., "cyber security, information security, infosec")
+- Be specific — include synonyms, alternative names, and examples
+- Clarify what should NOT match (e.g., "physical security" vs "cyber security")
+- For buyer-based rules, say explicitly "match on the buyer name, not the subject"
 - Test with `--dry-run` to refine your rules before going live
 
 ## How it works
@@ -162,20 +193,28 @@ The quality of your routing rules determines the quality of your matches. Here a
 │ Spend Network    │────>│   Gemini      │────>│ Teams/Slack  │
 │ Procurement API  │     │   (classify)  │     │  (webhooks)  │
 └──────────────────┘     └──────────────┘     └──────────────┘
-  Fetch daily records     Match against         Post formatted
-  with your filters       routing rules         alert cards
+  Fetch daily records     Relevance gate       Post formatted
+  with your filters       + routing rules      alert cards
+                          + relevance score
 ```
 
-1. **Fetch** - Queries the Spend Network API for today's opportunities matching your country, value, and document type filters
-2. **Deduplicate** - Skips records that were already posted in previous runs
-3. **Classify** - Sends each record to Gemini with your routing rules; the LLM identifies which rules match and writes a plain-English summary
-4. **Route** - Posts formatted cards to the matched Teams or Slack channels
+1. **Fetch** — Queries the Spend Network API for recent opportunities matching your filters
+2. **Deduplicate** — Skips records already posted in previous runs (14-day rolling window)
+3. **Gate** — Checks each record against the relevance gate (if configured)
+4. **Classify** — Sends each record to Gemini with your routing rules; returns matched destinations, relevance score, summary, and reason
+5. **Route** — Posts branded alert cards to the matched Teams or Slack channels
 
 ## Don't want to run this yourself?
 
 This script demonstrates what's possible with the Open Opportunities API. If you'd rather have managed alerts without running code:
 
-**[Open Opportunities Expert](https://openopps.com/expert)** includes API access, daily alerts, and more - so your team can focus on winning contracts, not maintaining scripts.
+**[Open Opportunities](https://openopps.com)** includes API access, daily alerts, and more — so your team can focus on winning contracts, not maintaining scripts.
+
+## A note on this code
+
+This entire project — every line of Python, the config structure, the routing logic, and this README — was built using [Claude Code](https://claude.ai/claude-code) to demonstrate how quickly you can build useful tools on top of the Open Opportunities API. It works, we use it internally, and we're sharing it as a starting point.
+
+That said: this is AI-generated code shared as a practical example, not a production-grade product. Please review it, test it in your own environment, and adapt it to your needs before relying on it. We welcome contributions and feedback.
 
 ## License
 

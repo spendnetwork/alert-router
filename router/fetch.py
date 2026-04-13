@@ -103,14 +103,14 @@ def fetch_records(token: str, config: dict) -> list[dict]:
 
         print(f"  Page {page_num}: {len(results)} records (total: {len(all_records)})", flush=True)
 
-        # Stop if this was the last page
-        if len(results) < limit:
-            break
-
-        # Stop if we've hit a max_records cap (from --limit CLI flag)
+        # Stop if we've hit a max_records cap (from --limit CLI flag or config)
         max_records = search.get("max_records")
         if max_records and len(all_records) >= max_records:
             all_records = all_records[:max_records]
+            break
+
+        # Stop if this was the last page
+        if len(results) < limit:
             break
 
         offset += limit
