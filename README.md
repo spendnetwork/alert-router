@@ -42,6 +42,18 @@ python run.py --lookback 7                 # look back 7 days
 python run.py --config /path/to/config.yaml  # custom config path
 ```
 
+### Important: API usage limits
+
+**The procurement database updates twice a day.** Making repeated requests (e.g. every few minutes) is pointless — the data won't have changed. Running the router once or twice a day is all you need.
+
+Excessive API usage will trigger rate limits and **your account may be suspended**. Please be respectful:
+
+- **Run once or twice a day** — a morning and evening run catches everything
+- **Don't poll in a loop** — there's no new data between updates
+- **Use search filters** — always filter by keyword, category, or buyer. Don't fetch unfiltered data
+- **Use `max_records`** — cap the number of records per run while testing
+- **Test with `--dry-run`** — saves webhook quota and is easier to iterate on
+
 ### Example dry-run output
 
 ```
